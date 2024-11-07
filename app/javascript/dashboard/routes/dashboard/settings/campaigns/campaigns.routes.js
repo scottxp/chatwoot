@@ -14,12 +14,16 @@ export default {
       children: [
         {
           path: '',
-          redirect: 'ongoing',
+          redirect: to => {
+            return { name: 'ongoing_campaigns', params: to.params };
+          },
         },
         {
           path: 'ongoing',
-          name: 'settings_account_campaigns',
-          roles: ['administrator'],
+          name: 'ongoing_campaigns',
+          meta: {
+            permissions: ['administrator'],
+          },
           component: Index,
         },
       ],
@@ -35,7 +39,9 @@ export default {
         {
           path: 'one_off',
           name: 'one_off',
-          roles: ['administrator'],
+          meta: {
+            permissions: ['administrator'],
+          },
           component: Index,
         },
       ],

@@ -1,19 +1,96 @@
+<script>
+import { useAlert, useTrack } from 'dashboard/composables';
+import { INBOX_EVENTS } from 'dashboard/helper/AnalyticsHelper/events';
+import InboxOptionMenu from './InboxOptionMenu.vue';
+import InboxDisplayMenu from './InboxDisplayMenu.vue';
+
+export default {
+  components: {
+    InboxOptionMenu,
+    InboxDisplayMenu,
+  },
+  props: {
+    isContextMenuOpen: {
+      type: Boolean,
+      default: false,
+    },
+  },
+  emits: ['redirect', 'filter'],
+  data() {
+    return {
+      showInboxDisplayMenu: false,
+      showInboxOptionMenu: false,
+    };
+  },
+  watch: {
+    isContextMenuOpen: {
+      handler(val) {
+        if (val) {
+          this.showInboxDisplayMenu = false;
+          this.showInboxOptionMenu = false;
+        }
+      },
+      immediate: true,
+    },
+  },
+  methods: {
+    markAllRead() {
+      useTrack(INBOX_EVENTS.MARK_ALL_NOTIFICATIONS_AS_READ);
+      this.$store.dispatch('notifications/readAll').then(() => {
+        useAlert(this.$t('INBOX.ALERTS.MARK_ALL_READ'));
+      });
+    },
+    deleteAll() {
+      this.$store.dispatch('notifications/deleteAll').then(() => {
+        useAlert(this.$t('INBOX.ALERTS.DELETE_ALL'));
+      });
+    },
+    deleteAllRead() {
+      this.$store.dispatch('notifications/deleteAllRead').then(() => {
+        useAlert(this.$t('INBOX.ALERTS.DELETE_ALL_READ'));
+      });
+    },
+    openInboxDisplayMenu() {
+      this.showInboxDisplayMenu = !this.showInboxDisplayMenu;
+    },
+    openInboxOptionsMenu() {
+      this.showInboxOptionMenu = !this.showInboxOptionMenu;
+    },
+    onInboxOptionMenuClick(key) {
+      const actions = {
+        mark_all_read: () => this.markAllRead(),
+        delete_all: () => this.deleteAll(),
+        delete_all_read: () => this.deleteAllRead(),
+      };
+      const action = actions[key];
+      if (action) action();
+      this.$emit('redirect');
+    },
+    onFilterChange(option) {
+      this.$emit('filter', option);
+      this.showInboxDisplayMenu = false;
+      this.$emit('redirect');
+    },
+  },
+};
+</script>
+
 <template>
   <div
-    class="flex w-full ltr:pl-4 rtl:pl-2 rtl:pr-4 ltr:pr-2 py-2 h-14 justify-between items-center border-b border-slate-50 dark:border-slate-800/50"
+    class="flex items-center justify-between w-full py-2 border-b ltr:pl-4 rtl:pl-2 rtl:pr-4 ltr:pr-2 h-14 border-slate-50 dark:border-slate-800/50"
   >
     <div class="flex items-center gap-1.5">
-      <h1 class="font-medium text-slate-900 dark:text-slate-25 text-xl">
+      <h1 class="text-xl font-medium text-slate-900 dark:text-slate-25">
         {{ $t('INBOX.LIST.TITLE') }}
       </h1>
       <div class="relative">
         <div
           role="button"
-          class="flex gap-1 items-center py-1 px-2 border border-slate-100 dark:border-slate-700/50 rounded-md"
+          class="flex items-center gap-1 px-2 py-1 border rounded-md border-slate-100 dark:border-slate-700/50"
           @click="openInboxDisplayMenu"
         >
           <span
-            class="text-slate-600 dark:text-slate-200 text-xs text-center font-medium"
+            class="text-xs font-medium text-center text-slate-600 dark:text-slate-200"
           >
             {{ $t('INBOX.LIST.DISPLAY_DROPDOWN') }}
           </span>
@@ -23,15 +100,15 @@
             class="text-slate-600 dark:text-slate-200"
           />
         </div>
-        <inbox-display-menu
+        <InboxDisplayMenu
           v-if="showInboxDisplayMenu"
           v-on-clickaway="openInboxDisplayMenu"
-          class="absolute top-8"
+          class="absolute top-9 ltr:left-0 rtl:right-0"
           @filter="onFilterChange"
         />
       </div>
     </div>
-    <div class="flex relative gap-1 items-center">
+    <div class="relative flex items-center gap-1">
       <!-- <woot-button
         variant="clear"
         size="small"
@@ -46,78 +123,12 @@
         icon="mail-inbox"
         @click="openInboxOptionsMenu"
       />
-      <inbox-option-menu
+      <InboxOptionMenu
         v-if="showInboxOptionMenu"
         v-on-clickaway="openInboxOptionsMenu"
-        class="absolute top-9"
+        class="absolute top-9 ltr:right-0 ltr:md:right-[unset] rtl:left-0 rtl:md:left-[unset]"
         @option-click="onInboxOptionMenuClick"
       />
     </div>
   </div>
 </template>
-
-<script>
-import { mixin as clickaway } from 'vue-clickaway';
-import InboxOptionMenu from './InboxOptionMenu.vue';
-import { INBOX_EVENTS } from 'dashboard/helper/AnalyticsHelper/events';
-import InboxDisplayMenu from './InboxDisplayMenu.vue';
-import alertMixin from 'shared/mixins/alertMixin';
-
-export default {
-  components: {
-    InboxOptionMenu,
-    InboxDisplayMenu,
-  },
-  mixins: [clickaway, alertMixin],
-  data() {
-    return {
-      showInboxDisplayMenu: false,
-      showInboxOptionMenu: false,
-    };
-  },
-  methods: {
-    markAllRead() {
-      this.$track(INBOX_EVENTS.MARK_ALL_NOTIFICATIONS_AS_READ);
-      this.$store.dispatch('notifications/readAll').then(() => {
-        this.showAlert(this.$t('INBOX.ALERTS.MARK_ALL_READ'));
-      });
-    },
-    deleteAll() {
-      this.$store.dispatch('notifications/deleteAll').then(() => {
-        this.showAlert(this.$t('INBOX.ALERTS.DELETE_ALL'));
-      });
-    },
-    deleteAllRead() {
-      this.$store.dispatch('notifications/deleteAllRead').then(() => {
-        this.showAlert(this.$t('INBOX.ALERTS.DELETE_ALL_READ'));
-      });
-    },
-    openInboxDisplayMenu() {
-      this.showInboxDisplayMenu = !this.showInboxDisplayMenu;
-    },
-    openInboxOptionsMenu() {
-      this.showInboxOptionMenu = !this.showInboxOptionMenu;
-    },
-    onInboxOptionMenuClick(key) {
-      this.showInboxOptionMenu = false;
-      if (key === 'mark_all_read') {
-        this.markAllRead();
-      }
-      if (key === 'delete_all') {
-        this.deleteAll();
-      }
-      if (key === 'delete_all_read') {
-        this.deleteAllRead();
-      }
-    },
-    onFilterChange(option) {
-      this.$emit('filter', option);
-      this.showInboxDisplayMenu = false;
-      if (this.$route.name === 'inbox_view') return;
-      this.$router.push({ name: 'inbox_view' });
-    },
-  },
-};
-</script>
-
-<style></style>

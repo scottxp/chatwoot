@@ -49,13 +49,17 @@ jobs:
       with:
         bundler-cache: true # runs 'bundle install' and caches installed gems automatically
 
+    - uses: pnpm/action-setup@v2
+      with:
+        version: 9.3.0
+
     - uses: actions/setup-node@v4
       with:
         node-version: 20
-        cache: yarn
+        cache: pnpm
 
-    - name: yarn
-      run: yarn install
+    - name: pnpm
+      run: pnpm install
 
     - name: Create database
       run: bundle exec rake db:create
@@ -73,6 +77,7 @@ jobs:
           spec/enterprise/controllers/api/v1/accounts/response_sources_controller_spec.rb \
           spec/enterprise/services/enterprise/message_templates/response_bot_service_spec.rb \
           spec/enterprise/controllers/enterprise/api/v1/accounts/inboxes_controller_spec.rb:47 \
+          spec/enterprise/jobs/enterprise/account/conversations_resolution_scheduler_job_spec.rb \
           --profile=10 \
           --format documentation
 

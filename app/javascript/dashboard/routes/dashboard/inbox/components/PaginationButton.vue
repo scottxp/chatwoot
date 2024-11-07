@@ -1,39 +1,3 @@
-<template>
-  <div class="flex gap-2 items-center">
-    <div class="flex gap-1 items-center">
-      <woot-button
-        size="tiny"
-        variant="hollow"
-        color-scheme="secondary"
-        icon="chevron-up"
-        :disabled="isUpDisabled"
-        @click="handleUpClick"
-      />
-      <woot-button
-        size="tiny"
-        variant="hollow"
-        color-scheme="secondary"
-        icon="chevron-down"
-        :disabled="isDownDisabled"
-        @click="handleDownClick"
-      />
-    </div>
-    <div class="flex items-center gap-1 whitespace-nowrap">
-      <span class="text-sm font-medium text-gray-600">
-        {{ totalLength <= 1 ? '1' : currentIndex }}
-      </span>
-      <span
-        v-if="totalLength > 1"
-        class="text-sm text-slate-400 relative -top-px"
-      >
-        /
-      </span>
-      <span v-if="totalLength > 1" class="text-sm text-slate-400">
-        {{ totalLength }}
-      </span>
-    </div>
-  </div>
-</template>
 <script>
 export default {
   props: {
@@ -46,6 +10,7 @@ export default {
       default: 0,
     },
   },
+  emits: ['prev', 'next'],
   computed: {
     isUpDisabled() {
       return this.currentIndex === 1;
@@ -68,3 +33,40 @@ export default {
   },
 };
 </script>
+
+<template>
+  <div class="flex gap-2 items-center">
+    <div class="flex gap-1 items-center">
+      <woot-button
+        size="tiny"
+        variant="hollow"
+        color-scheme="secondary"
+        icon="chevron-up"
+        :disabled="isUpDisabled"
+        @click="handleUpClick"
+      />
+      <woot-button
+        size="tiny"
+        variant="hollow"
+        color-scheme="secondary"
+        icon="chevron-down"
+        :disabled="isDownDisabled"
+        @click="handleDownClick"
+      />
+    </div>
+    <div class="flex items-center gap-1 whitespace-nowrap">
+      <span class="text-sm font-medium text-gray-600 tabular-nums">
+        {{ totalLength <= 1 ? '1' : currentIndex }}
+      </span>
+      <span
+        v-if="totalLength > 1"
+        class="text-sm text-slate-400 relative -top-px"
+      >
+        /
+      </span>
+      <span v-if="totalLength > 1" class="text-sm text-slate-400 tabular-nums">
+        {{ totalLength }}
+      </span>
+    </div>
+  </div>
+</template>

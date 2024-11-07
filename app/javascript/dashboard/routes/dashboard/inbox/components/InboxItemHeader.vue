@@ -1,63 +1,20 @@
-<template>
-  <div
-    class="flex gap-2 py-2 ltr:pl-4 rtl:pl-2 h-14 ltr:pr-2 rtl:pr-4 rtl:border-r justify-between items-center w-full border-b border-slate-50 dark:border-slate-800/50"
-  >
-    <pagination-button
-      v-if="totalLength > 1"
-      :total-length="totalLength"
-      :current-index="currentIndex"
-      @next="onClickNext"
-      @prev="onClickPrev"
-    />
-    <div v-else />
-    <div class="flex items-center gap-2">
-      <woot-button
-        variant="hollow"
-        size="small"
-        color-scheme="secondary"
-        icon="snooze"
-        @click="openSnoozeNotificationModal"
-      >
-        {{ $t('INBOX.ACTION_HEADER.SNOOZE') }}
-      </woot-button>
-      <woot-button
-        icon="delete"
-        size="small"
-        color-scheme="secondary"
-        variant="hollow"
-        @click="deleteNotification"
-      >
-        {{ $t('INBOX.ACTION_HEADER.DELETE') }}
-      </woot-button>
-    </div>
-    <woot-modal
-      :show.sync="showCustomSnoozeModal"
-      :on-close="hideCustomSnoozeModal"
-    >
-      <custom-snooze-modal
-        @close="hideCustomSnoozeModal"
-        @choose-time="scheduleCustomSnooze"
-      />
-    </woot-modal>
-  </div>
-</template>
 <script>
 import { mapGetters } from 'vuex';
+import { useAlert, useTrack } from 'dashboard/composables';
 import { getUnixTime } from 'date-fns';
-import { CMD_SNOOZE_NOTIFICATION } from 'dashboard/routes/dashboard/commands/commandBarBusEvents';
+import { CMD_SNOOZE_NOTIFICATION } from 'dashboard/helper/commandbar/events';
 import wootConstants from 'dashboard/constants/globals';
 import { findSnoozeTime } from 'dashboard/helper/snoozeHelpers';
 import { INBOX_EVENTS } from 'dashboard/helper/AnalyticsHelper/events';
 import PaginationButton from './PaginationButton.vue';
 import CustomSnoozeModal from 'dashboard/components/CustomSnoozeModal.vue';
-import alertMixin from 'shared/mixins/alertMixin';
+import { emitter } from 'shared/helpers/mitt';
 
 export default {
   components: {
     PaginationButton,
     CustomSnoozeModal,
   },
-  mixins: [alertMixin],
   props: {
     totalLength: {
       type: Number,
@@ -72,21 +29,18 @@ export default {
       default: null,
     },
   },
+  emits: ['next', 'prev'],
   data() {
-    return {
-      showCustomSnoozeModal: false,
-    };
+    return { showCustomSnoozeModal: false };
   },
   computed: {
-    ...mapGetters({
-      meta: 'notifications/getMeta',
-    }),
+    ...mapGetters({ meta: 'notifications/getMeta' }),
   },
   mounted() {
-    bus.$on(CMD_SNOOZE_NOTIFICATION, this.onCmdSnoozeNotification);
+    emitter.on(CMD_SNOOZE_NOTIFICATION, this.onCmdSnoozeNotification);
   },
-  destroyed() {
-    bus.$off(CMD_SNOOZE_NOTIFICATION, this.onCmdSnoozeNotification);
+  unmounted() {
+    emitter.off(CMD_SNOOZE_NOTIFICATION, this.onCmdSnoozeNotification);
   },
   methods: {
     openSnoozeNotificationModal() {
@@ -96,15 +50,17 @@ export default {
     hideCustomSnoozeModal() {
       this.showCustomSnoozeModal = false;
     },
-    snoozeNotification(snoozedUntil) {
-      this.$store
-        .dispatch('notifications/snooze', {
+    async snoozeNotification(snoozedUntil) {
+      try {
+        await this.$store.dispatch('notifications/snooze', {
           id: this.activeNotification?.id,
           snoozedUntil,
-        })
-        .then(() => {
-          this.showAlert(this.$t('INBOX.ALERTS.SNOOZE'));
         });
+
+        useAlert(this.$t('INBOX.ALERTS.SNOOZE'));
+      } catch (error) {
+        // Silently fail without any change in the UI
+      }
     },
     onCmdSnoozeNotification(snoozeType) {
       if (snoozeType === wootConstants.SNOOZE_OPTIONS.UNTIL_CUSTOM_TIME) {
@@ -122,7 +78,7 @@ export default {
       }
     },
     deleteNotification() {
-      this.$track(INBOX_EVENTS.DELETE_NOTIFICATION);
+      useTrack(INBOX_EVENTS.DELETE_NOTIFICATION);
       this.$store
         .dispatch('notifications/delete', {
           notification: this.activeNotification,
@@ -130,9 +86,9 @@ export default {
           count: this.meta.count,
         })
         .then(() => {
-          this.showAlert(this.$t('INBOX.ALERTS.DELETE'));
+          useAlert(this.$t('INBOX.ALERTS.DELETE'));
         });
-      this.$router.push({ name: 'inbox_view' });
+      this.$router.replace({ name: 'inbox_view' });
     },
     onClickNext() {
       this.$emit('next');
@@ -140,6 +96,65 @@ export default {
     onClickPrev() {
       this.$emit('prev');
     },
+    onClickGoToInboxList() {
+      this.$router.replace({ name: 'inbox_view' });
+    },
   },
 };
 </script>
+
+<template>
+  <div
+    class="flex items-center justify-between w-full gap-2 py-2 border-b ltr:pl-4 rtl:pl-2 h-14 ltr:pr-2 rtl:pr-4 rtl:border-r border-slate-50 dark:border-slate-800/50"
+  >
+    <woot-button
+      variant="clear link"
+      class="flex md:hidden !pt-1 !pb-1 rounded-md ltr:pr-1 rtl:pl-1 !no-underline"
+      size="medium"
+      color-scheme="primary"
+      icon="chevron-left"
+      @click="onClickGoToInboxList"
+    >
+      {{ $t('INBOX.ACTION_HEADER.BACK') }}
+    </woot-button>
+    <PaginationButton
+      v-if="totalLength > 1"
+      :total-length="totalLength"
+      :current-index="currentIndex + 1"
+      @next="onClickNext"
+      @prev="onClickPrev"
+    />
+    <div v-else />
+    <div class="flex items-center gap-2">
+      <woot-button
+        variant="hollow"
+        size="small"
+        color-scheme="secondary"
+        icon="snooze"
+        class="[&>span]:hidden md:[&>span]:inline-flex"
+        @click="openSnoozeNotificationModal"
+      >
+        {{ $t('INBOX.ACTION_HEADER.SNOOZE') }}
+      </woot-button>
+      <woot-button
+        icon="delete"
+        size="small"
+        color-scheme="secondary"
+        variant="hollow"
+        class="[&>span]:hidden md:[&>span]:inline-flex"
+        @click="deleteNotification"
+      >
+        {{ $t('INBOX.ACTION_HEADER.DELETE') }}
+      </woot-button>
+    </div>
+    <woot-modal
+      v-model:show="showCustomSnoozeModal"
+      :on-close="hideCustomSnoozeModal"
+    >
+      <CustomSnoozeModal
+        @close="hideCustomSnoozeModal"
+        @choose-time="scheduleCustomSnooze"
+      />
+    </woot-modal>
+  </div>
+</template>
